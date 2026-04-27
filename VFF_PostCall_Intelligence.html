@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VFF — Post-Call Intelligence Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --paper:    #F5F0E8;
+  --paper-2:  #EDE8DF;
+  --paper-3:  #E3DDD3;
+  --ink:      #1A1610;
+  --ink-soft: #3D3829;
+  --ink-mid:  #6B6250;
+  --ink-muted:#9A9080;
+  --gold:     #B8861E;
+  --gold-pale:#F2E8D0;
+  --red:      #8B1F1F;
+  --red-pale: #F5E8E8;
+  --green:    #1A5C38;
+  --green-pale:#E4F0EA;
+  --amber:    #7A4F00;
+  --amber-pale:#FEF3D8;
+  --blue:     #1A3A6B;
+  --blue-pale:#E8EEF8;
+  --border:   rgba(26,22,16,0.12);
+  --border-strong: rgba(26,22,16,0.22);
+  --shadow:   0 2px 12px rgba(26,22,16,0.08);
+  --shadow-lg:0 8px 32px rgba(26,22,16,0.10);
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  position: relative;
+}
+
+/* grain */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:0;
+}
+
+.app { max-width: 1080px; margin: 0 auto; padding: 2.5rem 2rem 5rem; position: relative; z-index: 1; }
+
+/* ── MASTHEAD ── */
+.masthead {
+  border-top: 3px solid var(--ink);
+  padding-top: 1.25rem;
+  padding-bottom: 1.1rem;
+  margin-bottom: 2.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.vmark {
+  width: 34px; height: 34px;
+  background: var(--ink);
+  clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display: flex; align-items: center; justify-content: center;
+}
+.vmark span { font-family: 'Cormorant Garamond',serif; font-size:15px; font-weight:600; color: var(--gold); }
+.brand-text { line-height:1.1; }
+.brand-name { font-family:'Outfit',sans-serif; font-size:0.78rem; font-weight:600; color:var(--ink); letter-spacing:0.04em; }
+.brand-sub  { font-family:'DM Mono',monospace; font-size:0.55rem; color:var(--ink-muted); letter-spacing:0.1em; text-transform:uppercase; }
+
+.masthead-center { text-align: center; }
+.masthead-title {
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.6rem; font-weight:500; color:var(--ink);
+  letter-spacing:0.01em; line-height:1;
+}
+.masthead-sub {
+  font-family:'DM Mono',monospace;
+  font-size:0.58rem; color:var(--ink-muted);
+  letter-spacing:0.12em; text-transform:uppercase;
+  margin-top:3px;
+}
+
+.api-zone { display:flex; align-items:center; gap:8px; }
+.api-zone label {
+  font-family:'DM Mono',monospace;
+  font-size:0.58rem; color:var(--ink-muted);
+  letter-spacing:0.1em; text-transform:uppercase;
+  white-space:nowrap;
+}
+.api-input {
+  font-family:'DM Mono',monospace; font-size:0.72rem;
+  background: var(--paper-2); border: 1px solid var(--border-strong);
+  border-radius:2px; padding:5px 10px; color:var(--ink); outline:none;
+  width:190px; transition:border-color 0.15s;
+}
+.api-input:focus { border-color:var(--gold); background:#fff; }
+.api-input::placeholder { color:var(--ink-muted); }
+
+/* ── HOW IT WORKS strip ── */
+.how-strip {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 0;
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-strong);
+  border-radius:3px;
+  overflow:hidden;
+}
+.how-step {
+  padding:0.9rem 1rem;
+  border-right: 1px solid var(--border);
+  position:relative;
+}
+.how-step:last-child { border-right:none; }
+.step-num {
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.8rem; font-weight:500;
+  color:var(--gold); line-height:1; margin-bottom:3px;
+}
+.step-label {
+  font-size:0.72rem; font-weight:600;
+  color:var(--ink); margin-bottom:2px;
+}
+.step-desc {
+  font-family:'DM Mono',monospace;
+  font-size:0.6rem; color:var(--ink-mid); line-height:1.5;
+}
+
+/* ── INPUT SECTION ── */
+.input-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.field-block { display:flex; flex-direction:column; gap:5px; }
+.field-label {
+  font-family:'DM Mono',monospace;
+  font-size:0.58rem; font-weight:500;
+  letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--ink-mid);
+}
+
+.field-input {
+  font-family:'Outfit',sans-serif; font-size:0.88rem;
+  background:#fff; border:1px solid var(--border-strong);
+  border-radius:2px; padding:8px 11px; color:var(--ink); outline:none;
+  transition:border-color 0.15s, box-shadow 0.15s;
+}
+.field-input:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(184,134,30,0.08); }
+
+.stage-select { appearance:none; cursor:pointer; }
+
+/* samples */
+.sample-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:0.75rem; }
+.sample-chip {
+  font-family:'DM Mono',monospace;
+  font-size:0.6rem; font-weight:500;
+  letter-spacing:0.06em; text-transform:uppercase;
+  padding:4px 11px; border:1px solid var(--border-strong);
+  border-radius:2px; background:transparent; cursor:pointer;
+  color:var(--ink-mid); transition:all 0.12s;
+}
+.sample-chip:hover { background:var(--ink); color:var(--gold); border-color:var(--ink); }
+
+.notes-area {
+  width:100%; font-family:'DM Mono',monospace; font-size:0.75rem;
+  line-height:1.65; color:var(--ink);
+  background:#fff; border:1px solid var(--border-strong);
+  border-radius:2px; padding:12px 13px;
+  resize:vertical; min-height:180px; outline:none;
+  transition:border-color 0.15s;
+}
+.notes-area:focus { border-color:var(--gold); }
+.notes-area::placeholder { color:var(--ink-muted); }
+.notes-hint {
+  font-family:'DM Mono',monospace; font-size:0.58rem;
+  color:var(--ink-muted); margin-top:5px; line-height:1.5;
+}
+
+/* ── RUN BUTTON ── */
+.run-btn {
+  width:100%; padding:14px 24px;
+  background:var(--ink); color:var(--gold);
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.05rem; font-weight:500; letter-spacing:0.06em;
+  border:none; border-radius:2px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  transition:background 0.15s; margin-bottom:2rem;
+}
+.run-btn:hover { background:var(--ink-soft); }
+.run-btn:disabled { opacity:0.45; cursor:not-allowed; }
+
+.spinner {
+  width:14px; height:14px;
+  border:2px solid rgba(184,134,30,0.3);
+  border-top-color:var(--gold);
+  border-radius:50%;
+  animation:spin 0.65s linear infinite;
+  display:none;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── ERROR ── */
+.error-box {
+  background:var(--red-pale); border:1px solid rgba(139,31,31,0.2);
+  border-radius:2px; padding:0.75rem 1rem;
+  font-size:0.8rem; color:var(--red); display:none;
+  margin-bottom:1rem; line-height:1.5;
+}
+
+/* ── RESULTS ── */
+.results { display:none; animation:fadeUp 0.4s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+.results-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:1.5rem;
+  margin-bottom:1.5rem;
+}
+
+/* score panel */
+.score-panel {
+  background:var(--ink);
+  border-radius:3px;
+  overflow:hidden;
+}
+
+.score-header {
+  padding:1rem 1.25rem 0.75rem;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.score-company {
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.2rem; font-weight:500; color:#fff;
+  margin-bottom:2px;
+}
+.score-meta {
+  font-family:'DM Mono',monospace;
+  font-size:0.6rem; color:rgba(255,255,255,0.35);
+  letter-spacing:0.08em; text-transform:uppercase;
+}
+
+.score-dial-row {
+  padding:1rem 1.25rem;
+  display:flex; align-items:center; gap:1.25rem;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+.dial-wrap { position:relative; width:80px; height:80px; flex-shrink:0; }
+.dial-wrap svg { transform:rotate(-90deg); }
+.dial-bg   { fill:none; stroke:rgba(255,255,255,0.07); stroke-width:7; }
+.dial-fill { fill:none; stroke-width:7; stroke-linecap:round; transition:stroke-dasharray 1s ease; }
+.dial-label {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.dial-pct {
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.5rem; font-weight:600; color:var(--gold); line-height:1;
+}
+.dial-sub {
+  font-family:'DM Mono',monospace;
+  font-size:0.45rem; color:rgba(255,255,255,0.35);
+  letter-spacing:0.1em; text-transform:uppercase;
+}
+
+.dial-meta { flex:1; }
+.stage-tag {
+  display:inline-block;
+  font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:500;
+  letter-spacing:0.08em; text-transform:uppercase;
+  padding:2px 9px; border-radius:2px; margin-bottom:6px;
+}
+.verdict-txt { font-size:0.78rem; color:rgba(255,255,255,0.5); line-height:1.5; }
+
+/* criteria list */
+.criteria-list { padding:0.75rem 1.25rem; }
+.crit-item {
+  display:flex; align-items:center; gap:8px;
+  padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.crit-item:last-child { border-bottom:none; }
+.crit-dot {
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+}
+.dot-c { background:#50C890; }
+.dot-p { background:var(--gold); }
+.dot-m { background:#FF6B6B; }
+.crit-name { flex:1; font-size:0.75rem; color:rgba(255,255,255,0.6); }
+.crit-pts {
+  font-family:'DM Mono',monospace; font-size:0.62rem;
+  color:rgba(255,255,255,0.3);
+}
+
+/* Salesforce note panel */
+.sf-panel {
+  background:#fff;
+  border:1px solid var(--border-strong);
+  border-radius:3px;
+  overflow:hidden;
+}
+.sf-header {
+  background:var(--paper-2);
+  padding:0.75rem 1.1rem;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.sf-title {
+  font-family:'DM Mono',monospace;
+  font-size:0.6rem; font-weight:500;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-mid);
+}
+.sf-badge {
+  font-family:'DM Mono',monospace; font-size:0.58rem; font-weight:500;
+  padding:2px 8px; border-radius:2px;
+  background:#00A1E0; color:#fff;
+  letter-spacing:0.06em;
+}
+.sf-body {
+  padding:1.1rem;
+  font-family:'DM Mono',monospace; font-size:0.73rem;
+  line-height:1.7; color:var(--ink-soft);
+  white-space:pre-wrap; overflow-y:auto;
+  max-height:320px;
+}
+.sf-copy {
+  font-family:'Outfit',sans-serif; font-size:0.8rem; font-weight:500;
+  background:transparent; border:1px solid var(--border-strong);
+  border-radius:2px; padding:6px 14px; cursor:pointer;
+  color:var(--ink-mid); transition:all 0.12s;
+  margin:0 1.1rem 1.1rem;
+  display:block; width:calc(100% - 2.2rem);
+}
+.sf-copy:hover { background:var(--ink); color:var(--gold); border-color:var(--ink); }
+
+/* next steps */
+.next-section {
+  background:#fff; border:1px solid var(--border-strong);
+  border-radius:3px; padding:1rem 1.25rem;
+}
+.ns-title {
+  font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:500;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-mid);
+  margin-bottom:0.75rem;
+}
+.ns-item {
+  display:flex; gap:10px; align-items:flex-start; margin-bottom:8px;
+}
+.ns-item:last-child { margin-bottom:0; }
+.ns-num {
+  width:20px; height:20px; border-radius:50%;
+  background:var(--ink); color:var(--gold);
+  font-family:'DM Mono',monospace; font-size:0.62rem; font-weight:500;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; margin-top:1px;
+}
+.ns-txt { font-size:0.8rem; line-height:1.5; color:var(--ink); }
+
+/* gaps section */
+.gaps-section {
+  background:var(--red-pale); border:1px solid rgba(139,31,31,0.12);
+  border-radius:3px; padding:1rem 1.25rem; margin-bottom:1.5rem;
+}
+.gap-title {
+  font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:500;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--red);
+  margin-bottom:0.75rem;
+}
+.gap-item {
+  display:flex; gap:8px; align-items:flex-start;
+  margin-bottom:6px; font-size:0.8rem; color:var(--red); line-height:1.4;
+}
+.gap-item:last-child { margin-bottom:0; }
+.gap-bullet { flex-shrink:0; margin-top:3px; font-size:9px; }
+
+/* reset */
+.reset-btn {
+  font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:500;
+  letter-spacing:0.1em; text-transform:uppercase;
+  background:transparent; border:1px solid var(--border-strong);
+  color:var(--ink-mid); padding:7px 16px; border-radius:2px;
+  cursor:pointer; transition:all 0.12s; display:block;
+}
+.reset-btn:hover { background:var(--ink); color:var(--gold); border-color:var(--ink); }
+
+/* manual zone */
+.manual-zone { display:none; margin-bottom:1.5rem; }
+.manual-panel {
+  background:#fff; border:1px solid var(--border-strong);
+  border-radius:3px; padding:1rem 1.25rem;
+}
+.manual-hint { font-size:0.78rem; color:var(--ink-mid); margin-bottom:0.6rem; line-height:1.5; }
+.manual-hint a { color:var(--gold); text-decoration:none; font-weight:500; cursor:pointer; }
+.paste-ta {
+  width:100%; font-family:'DM Mono',monospace; font-size:0.72rem;
+  background:var(--paper); border:1px solid var(--border-strong);
+  border-radius:2px; padding:9px 11px; resize:vertical; min-height:80px; outline:none;
+  color:var(--ink);
+}
+
+/* footer */
+.footer {
+  margin-top:3.5rem; padding-top:1.1rem;
+  border-top:1px solid var(--border-strong);
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;
+}
+.footer span {
+  font-family:'DM Mono',monospace; font-size:0.55rem;
+  color:var(--ink-muted); letter-spacing:0.06em;
+}
+
+@media(max-width:680px){
+  .input-section,.results-grid{grid-template-columns:1fr}
+  .how-strip{grid-template-columns:1fr 1fr}
+  .masthead{grid-template-columns:1fr;text-align:center}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- MASTHEAD -->
+  <div class="masthead">
+    <div class="brand">
+      <div class="vmark"><span>V</span></div>
+      <div class="brand-text">
+        <div class="brand-name">Vista Foundation Fund</div>
+        <div class="brand-sub">Business Development · BD Ops</div>
+      </div>
+    </div>
+    <div class="masthead-center">
+      <div class="masthead-title">Post-Call Intelligence Engine</div>
+      <div class="masthead-sub">Paste raw notes → AI extracts discovery data → Salesforce-ready note generated</div>
+    </div>
+    <div class="api-zone">
+      <label>API Key</label>
+      <input type="password" class="api-input" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off"/>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="how-strip">
+    <div class="how-step">
+      <div class="step-num">01</div>
+      <div class="step-label">Call Ends</div>
+      <div class="step-desc">Sourcer receives a structured prompt within minutes of the meeting finishing</div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">02</div>
+      <div class="step-label">Plain-Text Reply</div>
+      <div class="step-desc">No CRM fields. Just reply in natural language — whatever was learned on the call</div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">03</div>
+      <div class="step-label">AI Extracts & Scores</div>
+      <div class="step-desc">Claude reads the notes against Vista's 8-criterion discovery rubric and scores each gap</div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">04</div>
+      <div class="step-label">Salesforce Updated</div>
+      <div class="step-desc">Formatted activity note posted to the opp and % Discovered field updated automatically</div>
+    </div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="sample-row">
+    <span style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--ink-muted);align-self:center;margin-right:2px">Try a sample:</span>
+    <button class="sample-chip" onclick="loadSample('relay')">Relay Analytics</button>
+    <button class="sample-chip" onclick="loadSample('mark43')">Mark43</button>
+    <button class="sample-chip" onclick="loadSample('sparse')">Sparse notes</button>
+    <button class="sample-chip" onclick="loadSample('blank')">Clear</button>
+  </div>
+
+  <div class="input-section">
+    <div class="field-block">
+      <label class="field-label">Company Name *</label>
+      <input type="text" class="field-input" id="company" placeholder="e.g. Relay Analytics"/>
+    </div>
+    <div class="field-block">
+      <label class="field-label">Current Pipeline Stage</label>
+      <select class="field-input stage-select" id="stage">
+        <option value="SAL">SAL — Identified</option>
+        <option value="SEL">SEL — DM Engaged</option>
+        <option value="SQL" selected>SQL — 50%+ Discovered</option>
+        <option value="Early Action">Early Action — 70%+ Discovered</option>
+        <option value="Diligence">Diligence — 85%+ Discovered</option>
+      </select>
+    </div>
+    <div class="field-block">
+      <label class="field-label">Sourcer</label>
+      <input type="text" class="field-input" id="sourcer" placeholder="e.g. Tyler Brooks"/>
+    </div>
+    <div class="field-block">
+      <label class="field-label">Contact on Call</label>
+      <input type="text" class="field-input" id="contact" placeholder="e.g. Jake Morrison, CEO"/>
+    </div>
+  </div>
+
+  <div class="field-block" style="margin-bottom:0.75rem">
+    <label class="field-label">Raw Call Notes — paste exactly as written</label>
+    <textarea class="notes-area" id="notes" placeholder="Paste your raw notes here — as messy as they came out of the call. No formatting needed.
+
+Example:
+— spoke w Jake ceo today. says arr is around 34m, grew like 30% last yr. 140 customers. nrr is 114 confirmed by CFO last week. gross margin 71%. family office owns it, no outside money, jake seems open to a deal conversation but wants the right partner. no banker. cloud on AWS. main competitors are fourkites and project44, Jake says they win on price mostly w mid market customers."></textarea>
+    <div class="notes-hint">Abbreviations, bullet points, stream of consciousness — all fine. The AI reads it as-is.</div>
+  </div>
+
+  <button class="run-btn" id="runBtn" onclick="runEngine()">
+    <div class="spinner" id="spinner"></div>
+    <span id="btnTxt">Extract Discovery Data →</span>
+  </button>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- MANUAL ZONE -->
+  <div class="manual-zone" id="manualZone">
+    <div class="manual-panel">
+      <div class="manual-hint">No API key? <a onclick="copyPrompt()">Copy the extraction prompt</a> → paste into Claude.ai → paste the JSON response below.</div>
+      <textarea class="paste-ta" id="pasteInput" placeholder="Paste Claude's JSON response here..."></textarea>
+      <button class="run-btn" onclick="parseManual()" style="margin-top:0.6rem;margin-bottom:0">Parse Response →</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <div class="results-grid">
+
+      <!-- LEFT: Score panel -->
+      <div class="score-panel">
+        <div class="score-header">
+          <div class="score-company" id="res_company">—</div>
+          <div class="score-meta" id="res_meta">—</div>
+        </div>
+        <div class="score-dial-row">
+          <div class="dial-wrap">
+            <svg viewBox="0 0 80 80" width="80" height="80">
+              <circle class="dial-bg" cx="40" cy="40" r="32"/>
+              <circle class="dial-fill" id="dialFill" cx="40" cy="40" r="32" stroke-dasharray="0 201" stroke="#B8861E"/>
+            </svg>
+            <div class="dial-label">
+              <div class="dial-pct" id="dialPct">0%</div>
+              <div class="dial-sub">Discovered</div>
+            </div>
+          </div>
+          <div class="dial-meta">
+            <div class="stage-tag" id="stageTag">—</div>
+            <div class="verdict-txt" id="verdictTxt">—</div>
+          </div>
+        </div>
+        <div class="criteria-list" id="criteriaList"></div>
+      </div>
+
+      <!-- RIGHT: Salesforce note -->
+      <div class="sf-panel">
+        <div class="sf-header">
+          <div class="sf-title">Salesforce Activity Note — Ready to Post</div>
+          <div class="sf-badge">● Salesforce</div>
+        </div>
+        <div class="sf-body" id="sfNote">—</div>
+        <button class="sf-copy" onclick="copyNote()">Copy to Clipboard</button>
+      </div>
+
+    </div>
+
+    <!-- Gaps -->
+    <div class="gaps-section" id="gapsSection" style="display:none">
+      <div class="gap-title">🔴 Discovery Gaps — Ask These on Your Next Call</div>
+      <div id="gapsList"></div>
+    </div>
+
+    <!-- Next steps -->
+    <div class="next-section" style="margin-bottom:1.5rem">
+      <div class="ns-title">Recommended Next Steps</div>
+      <div id="nextList"></div>
+    </div>
+
+    <button class="reset-btn" onclick="resetAll()">← Process another call</button>
+  </div>
+
+  <div class="footer">
+    <span>Vista Foundation Fund · BD Operations · Post-Call Intelligence Engine</span>
+    <span>AI-powered · Not a call transcript · Sourcer-entered notes only</span>
+  </div>
+
+</div>
+
+<script>
+const SAMPLES = {
+  relay: {
+    company:'Relay Analytics', stage:'SQL', sourcer:'Tyler Brooks', contact:'Jake Morrison, CEO',
+    notes:`— spoke w Jake ceo today about 30 mins. arr is 34m, grew 31% last year. 140 customers avg tenure 3.8 yrs. nrr 114% confirmed. gross margin 71%. family office owns it no outside investors. jake open to a deal, wants right partner, no banker yet. cloud on AWS, modern stack minimal tech debt. competitors are fourkites and project44 - they win on price with mid market. jake says win rate against fourkites is around 65%. engineering team 35 ppl.`
+  },
+  mark43: {
+    company:'Mark43', stage:'Early Action', sourcer:'Ryan Atlas', contact:'Bob Hughes, CEO',
+    notes:`— call w bob hughes. arr around 72m growing 28 yoy. 250+ law enforcement agencies. nrr he said north of 110 but wouldnt give exact number waiting on CFO to confirm. gross margin 74% CFO confirmed last week. customer concentration top 10 = 31% of arr no single customer over 5%. total funding 319m general catalyst series f at approx 900m val. no banker. cloud native AWS. competitors tyler tech and centralsquare both legacy on prem. also versaterm which is cloud but smaller. win rate vs legacy about 70%.`
+  },
+  sparse: {
+    company:'Grove Systems', stage:'SEL', sourcer:'Jordan Ellis', contact:'Sarah Kim, CEO',
+    notes:`— quick intro call. does HR software for mid market companies. seems interesting, CEO was friendly. said they have good growth but wouldnt share numbers yet. maybe 50-100 customers. wants to do another call next month.`
+  },
+  blank: { company:'', stage:'SQL', sourcer:'', contact:'', notes:'' }
+};
+
+let pendingPrompt = null;
+
+function loadSample(k) {
+  const s = SAMPLES[k];
+  document.getElementById('company').value = s.company;
+  document.getElementById('stage').value = s.stage;
+  document.getElementById('sourcer').value = s.sourcer || '';
+  document.getElementById('contact').value = s.contact || '';
+  document.getElementById('notes').value = s.notes;
+}
+
+function buildPrompt(d) {
+  return `You are an AI discovery extraction engine for Vista Foundation Fund (VFF), a middle-market enterprise software PE fund.
+
+TASK: Read these raw post-call notes and extract structured discovery data. Score each of the 8 VFF discovery criteria. Then generate a clean, professional Salesforce activity note.
+
+DISCOVERY CRITERIA (8 total):
+1. ARR & Revenue Growth (15%) — Confirmed ARR AND growth rate required for full score
+2. NRR & Churn Profile (15%) — Confirmed NRR % or specific churn data
+3. Gross Margin Profile (12%) — Confirmed gross margin %
+4. Customer Count & Concentration (12%) — Count AND concentration data
+5. Competitive Position (12%) — Named competitors, win rates, market positioning
+6. Management Team Quality (12%) — CEO/CFO engagement + references or team assessment
+7. Ownership & Transaction Path (11%) — Ownership structure and transaction motivation
+8. Technology Architecture (11%) — Cloud vs. legacy, tech stack, tech debt
+
+SCORING: Confirmed = full weight. Partial = half weight. Missing = 0. Total = sum of earned points.
+
+STAGE THRESHOLDS: SAL=0%, SEL=any, SQL=50%, Early Action=70%, Diligence=85%
+
+CALL DATA:
+Company: ${d.company}
+Current Stage: ${d.stage}
+Sourcer: ${d.sourcer || 'Unknown'}
+Contact on call: ${d.contact || 'Unknown'}
+Raw notes:
+${d.notes}
+
+For the Salesforce note: write it as a professional activity log entry — past tense, structured, specific. Include date, contact, key findings organized by topic, and a clear "Status" line at the end with next steps. Make it something a Managing Director would actually want to read.
+
+Return ONLY valid JSON, no backticks:
+{"company":"string","pct_discovered":0,"justified_stage":"SQL","verdict":"string 1-2 sentences","criteria":[{"name":"ARR & Revenue Growth","weight":15,"status":"confirmed","points":15,"evidence":"string"},{"name":"NRR & Churn Profile","weight":15,"status":"partial","points":7,"evidence":"string"},{"name":"Gross Margin Profile","weight":12,"status":"missing","points":0,"evidence":"string"},{"name":"Customer Count & Concentration","weight":12,"status":"confirmed","points":12,"evidence":"string"},{"name":"Competitive Position","weight":12,"status":"partial","points":6,"evidence":"string"},{"name":"Management Team Quality","weight":12,"status":"confirmed","points":12,"evidence":"string"},{"name":"Ownership & Transaction Path","weight":11,"status":"confirmed","points":11,"evidence":"string"},{"name":"Technology Architecture","weight":11,"status":"missing","points":0,"evidence":"string"}],"gaps":["string","string"],"next_steps":["string","string","string"],"salesforce_note":"string — full multiline note with line breaks as \\n"}`;
+}
+
+async function runEngine() {
+  const company = document.getElementById('company').value.trim();
+  const notes   = document.getElementById('notes').value.trim();
+  if (!company) { showErr('Enter a company name.'); return; }
+  if (!notes)   { showErr('Paste some call notes first.'); return; }
+
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const data = {
+    company, notes,
+    stage:   document.getElementById('stage').value,
+    sourcer: document.getElementById('sourcer').value.trim(),
+    contact: document.getElementById('contact').value.trim(),
+  };
+  pendingPrompt = buildPrompt(data);
+
+  if (!apiKey) {
+    document.getElementById('manualZone').style.display = 'block';
+    showErr('No API key — use manual mode below.');
+    return;
+  }
+
+  hideErr();
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('spinner').style.display = 'block';
+  document.getElementById('btnTxt').textContent = 'Extracting discovery data...';
+  document.getElementById('results').style.display = 'none';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2000,
+        messages:[{ role:'user', content: pendingPrompt }]
+      })
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({}));
+      throw new Error(e.error?.message || `HTTP ${res.status}`);
+    }
+    const d = await res.json();
+    const text = d.content.map(b=>b.text||'').join('');
+    const clean = text.replace(/```json|```/g,'').trim();
+    const s = clean.indexOf('{'), e2 = clean.lastIndexOf('}');
+    renderResult(JSON.parse(clean.slice(s, e2+1)));
+  } catch(err) {
+    showErr('API error: ' + err.message);
+    document.getElementById('manualZone').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('btnTxt').textContent = 'Extract Discovery Data →';
+  }
+}
+
+function copyPrompt() {
+  if (!pendingPrompt) {
+    const company = document.getElementById('company').value.trim();
+    const notes   = document.getElementById('notes').value.trim();
+    if (!company || !notes) { showErr('Fill in company and notes first.'); return; }
+    pendingPrompt = buildPrompt({ company, notes,
+      stage: document.getElementById('stage').value,
+      sourcer: document.getElementById('sourcer').value.trim(),
+      contact: document.getElementById('contact').value.trim() });
+  }
+  navigator.clipboard.writeText(pendingPrompt).then(()=>alert('Prompt copied! Paste into Claude.ai, then paste the JSON response back here.'));
+}
+
+function parseManual() {
+  const raw = document.getElementById('pasteInput').value.trim();
+  if (!raw) { showErr('Paste JSON first.'); return; }
+  try {
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    renderResult(JSON.parse(clean.slice(s,e+1)));
+    document.getElementById('manualZone').style.display = 'none';
+  } catch(err) { showErr('Parse error: ' + err.message); }
+}
+
+function renderResult(r) {
+  const pct = Math.min(100, Math.max(0, r.pct_discovered||0));
+  const circ = 2*Math.PI*32;
+  const dash = (pct/100)*circ;
+  const col = pct>=85?'#50C890':pct>=70?'#B8861E':pct>=50?'#D4A84B':'#FF6B6B';
+  document.getElementById('dialPct').textContent = pct+'%';
+  document.getElementById('dialFill').setAttribute('stroke', col);
+  setTimeout(()=>document.getElementById('dialFill').setAttribute('stroke-dasharray',`${dash} ${circ}`),50);
+
+  document.getElementById('res_company').textContent = r.company || document.getElementById('company').value;
+  document.getElementById('res_meta').textContent = `${document.getElementById('stage').value} → Justified: ${r.justified_stage||'—'} · Sourcer: ${document.getElementById('sourcer').value||'Unknown'}`;
+  document.getElementById('verdictTxt').textContent = r.verdict || '';
+
+  const stageTag = document.getElementById('stageTag');
+  const j = r.justified_stage||'SAL';
+  const stageCols = {'SAL':'rgba(255,255,255,0.1)','SEL':'rgba(26,92,138,0.4)','SQL':'rgba(184,134,30,0.3)','Early Action':'rgba(26,92,58,0.4)','Diligence':'rgba(80,200,144,0.3)'};
+  stageTag.textContent = `Justified: ${j}`;
+  stageTag.style.cssText = `background:${stageCols[j]||'rgba(255,255,255,0.1)'};color:#fff;display:inline-block;font-family:'DM Mono',monospace;font-size:0.6rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:2px 9px;border-radius:2px;margin-bottom:6px;`;
+
+  const cl = document.getElementById('criteriaList');
+  cl.innerHTML = '';
+  (r.criteria||[]).forEach(c=>{
+    const dotCls = c.status==='confirmed'?'dot-c':c.status==='partial'?'dot-p':'dot-m';
+    cl.innerHTML += `<div class="crit-item">
+      <div class="crit-dot ${dotCls}"></div>
+      <div class="crit-name">${c.name}</div>
+      <div class="crit-pts">${c.points||0}/${c.weight}pt</div>
+    </div>`;
+  });
+
+  document.getElementById('sfNote').textContent = (r.salesforce_note||'').replace(/\\n/g,'\n');
+
+  const gaps = r.gaps||[];
+  const gs = document.getElementById('gapsSection');
+  if (gaps.length>0) {
+    gs.style.display='block';
+    document.getElementById('gapsList').innerHTML = gaps.map(g=>
+      `<div class="gap-item"><div class="gap-bullet">✗</div>${g}</div>`
+    ).join('');
+  } else { gs.style.display='none'; }
+
+  document.getElementById('nextList').innerHTML = (r.next_steps||[]).map((ns,i)=>
+    `<div class="ns-item"><div class="ns-num">${i+1}</div><div class="ns-txt">${ns}</div></div>`
+  ).join('');
+
+  const res = document.getElementById('results');
+  res.style.display='block';
+  setTimeout(()=>res.scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+
+function copyNote() {
+  const note = document.getElementById('sfNote').textContent;
+  navigator.clipboard.writeText(note).then(()=>{
+    const btn = document.querySelector('.sf-copy');
+    btn.textContent='Copied ✓';
+    setTimeout(()=>btn.textContent='Copy to Clipboard', 2000);
+  });
+}
+
+function resetAll() {
+  document.getElementById('results').style.display='none';
+  document.getElementById('manualZone').style.display='none';
+  document.getElementById('pasteInput').value='';
+  hideErr(); loadSample('blank');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showErr(m) { const e=document.getElementById('errorBox'); e.textContent=m; e.style.display='block'; }
+function hideErr()  { document.getElementById('errorBox').style.display='none'; }
+</script>
+</body>
+</html>
